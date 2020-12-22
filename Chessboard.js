@@ -18,8 +18,9 @@ class Chessboard {
         this.whiteKingChecked = false;
         this.blackKingChecked = false;
         this.canCastleKingside = [true, true];
-        this.canCastleQueenside = [false, false];
+        this.canCastleQueenside = [true, true];
         this.currentTurn = WHITE;
+        this.enPassant = [-1, -1];
     }
 
     // Copy constructor
@@ -228,22 +229,74 @@ class Chessboard {
         let pieceColour = this.getPieceColour(piece);
 
         // Handle castling
-        /*
-        if (piece === 'k' || piece === 'K') {
-            if (ic === fC) {
+        // White
+        if (piece === 'k') {
+            if (iR === fR) {
                 // Kingside
-                if (Math.abs(fR - iR) == 2 &&  this.canCastleKingside[this.getPieceColour(piece)]){
-                    this.setPiece(piece, fR, fC);
+                if (fC - iC === 2 &&  this.canCastleKingside[WHITE]){
+                    if (this.checkEmpty(iR, iC+1) && this.checkEmpty(iR, iC+2)) {
+                        this.setPiece(piece, fR, fC);
+                        this.setPiece('r', iR, fC-1);
+                        this.setPiece(EMP, iR, iC);
+                        this.setPiece(EMP, iR, iC+3);
+                        return true;
+                    }
+                }
+                // Queenside
+                if (fC - iC === -2 && this.canCastleQueenside[WHITE]) {
+                    if (this.checkEmpty(iR, iC-1) && this.checkEmpty(iR, iC-2) && this.checkEmpty(iR, iC-3)) {
+                        this.setPiece(piece, fR, fC);
+                        this.setPiece('r', iR, fC+1);
+                        this.setPiece(EMP, iR, iC);
+                        this.setPiece(EMP, iR, iC-3);
+                        this.setPiece(EMP, iR, iC-4);
+                        return true;
+                    }
                 }
             }
         }
-        */
+
+        // Black
+        if (piece === 'K') {
+            if (iR === fR) {
+                // Kingside
+                if (fC - iC === 2 &&  this.canCastleKingside[BLACK]){
+                    if (this.checkEmpty(iR, iC+1) && this.checkEmpty(iR, iC+2)) {
+                        this.setPiece(piece, fR, fC);
+                        this.setPiece('R', iR, fC-1);
+                        this.setPiece(EMP, iR, iC);
+                        this.setPiece(EMP, iR, iC+3);
+                        return true;
+                    }
+                }
+                // Queenside
+                if (fC - iC === -2 && this.canCastleQueenside[BLACK]) {
+                    if (this.checkEmpty(iR, iC-1) && this.checkEmpty(iR, iC-2) && this.checkEmpty(iR, iC-3)) {
+                        this.setPiece(piece, fR, fC);
+                        this.setPiece('R', iR, fC+1);
+                        this.setPiece(EMP, iR, iC);
+                        this.setPiece(EMP, iR, iC-3);
+                        this.setPiece(EMP, iR, iC-4);
+                        return true;
+                    }
+                }
+            }
+        }
+        
 
         // Handle en passant
 
         // Handle pawn movement (without capturing) and promotion
         // White
         if (piece == 'p') {
+            // Double move
+            if (fR - iR === -2 && iC === fC && this.checkEmpty(fR, fC) && iR === 6) {
+                this.setPiece(piece, fR, fC);
+                this.setPiece(EMP, iR, iC);
+                return true;
+            }
+
+            // Single move
             if (fR - iR === -1 && iC === fC && this.checkEmpty(fR, fC)) {
                 this.setPiece(piece, fR, fC);
                 this.setPiece(EMP, iR, iC);
@@ -256,6 +309,14 @@ class Chessboard {
         }
         // Black
         if (piece == 'P') {
+            // Double move
+            if (fR - iR === 2 && iC === fC && this.checkEmpty(fR, fC) && iR === 1) {
+                this.setPiece(piece, fR, fC);
+                this.setPiece(EMP, iR, iC);
+                return true;
+            }
+            
+            // Single move
             if (fR - iR === 1 && iC === fC && this.checkEmpty(fR, fC)) {
                 this.setPiece(piece, fR, fC);
                 this.setPiece(EMP, iR, iC);
@@ -287,10 +348,55 @@ class Chessboard {
         if (this.getPieceColour(this.getPiece(iR, iC)) === this.currentTurn){
             if (this.makeMoveHelper(iR, iC, fR, fC)) {
                 this.currentTurn = 1 - this.currentTurn;
+                // Disallow castling on the corresponding side
+                if (iR === 0 && iC === 0) {
+                    this.canCastleQueenside[BLACK] = false;
+                }
+                if (iR === 0 && iC === 7) {
+                    this.canCastleKingside[BLACK] = false;
+                }
+                if (iR === 7 && iC === 0) {
+                    this.canCastleQueenside[WHITE] = false;
+                }
+                if (iR === 7 && iC === 7) {
+                    this.canCastleKingside[BLACK] = false;
+                }
                 return true;
             }
         }
         return false;
+    }
+
+    // Returns static evaluation of position
+    // Positive evaluation favours white
+    // Negative evaluation favours black
+    staticEval() {
+        dict = {
+            'p': 1, 'P': -1,
+            'b': 3, 'B': -3,
+            'n': 3, 'N': -3,
+            'r': 5, 'R': -5,
+            'q': 9, 'Q': -9,
+            'k': 300, 'K': -300
+        }
+        ret = 0;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                piece = this.getPiece(i, j)
+                ret += dict[piece];
+            }
+        }
+        return ret;
+    }
+
+    // Returns whether the game is over
+    gameOver() {
+        return false;
+    }
+
+    // Returns all possible moves from the given colour
+    getMoves() {
+        return [];
     }
 
 }
