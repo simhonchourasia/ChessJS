@@ -19,6 +19,7 @@ class Chessboard {
         this.blackKingChecked = false;
         this.canCastleKingside = [true, true];
         this.canCastleQueenside = [false, false];
+        this.currentTurn = WHITE;
     }
 
     // Copy constructor
@@ -90,7 +91,7 @@ class Chessboard {
             let minR = Math.min(iRow, fRow);
             let maxR = Math.max(iRow, fRow);
             for (let r = minR + 1; r < maxR; r++) {
-                if (!(this.checkEmpty(iRow, c))) {
+                if (!(this.checkEmpty(r, iCol))) {
                     return false
                 }
             }
@@ -112,9 +113,9 @@ class Chessboard {
             return false;
         }
 
-        for (let i = minR+1; i < maxR; i++) {
-            for (let j = minC+1; j < maxC; j++) {
-                if (! (this.checkEmpty(i, j))) {
+        for (let i = minR + 1; i < maxR; i++) {
+            for (let j = minC + 1; j < maxC; j++) {
+                if (!(this.checkEmpty(i, j))) {
                     return false;
                 }
             }
@@ -141,17 +142,17 @@ class Chessboard {
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
                 // Make sure that the piece is of the opposite colour
-                if (this.getPieceColour(this.getPiece(i, j) !== colour)) {
-                    if(this.isAttacking(i, j, kingR, kingC)) {
+                if (this.getPieceColour(this.getPiece(i, j)) !== colour) {
+                    if (this.isAttacking(i, j, kingR, kingC)) {
                         return true;
                         console.log(true);
                     }
                 }
             }
         }
-        console.log(false);
+        //console.log(false);
         return false;
-        
+
     }
 
     // Finds out if a piece at iRow, iCol is attacking the square given by fRow, fCol
@@ -159,12 +160,14 @@ class Chessboard {
         let piece = this.getPiece(iRow, iCol);
 
         // First, we check if the final position is occupied by an allied piece
-        if (this.getPieceColour(piece) === this.getPieceColour(piece)){
-            return false;
+        if (this.getPiece(fRow, fCol) !== EMP) {
+            if (this.getPieceColour(piece) === this.getPieceColour(this.getPiece(fRow, fCol))) {
+                return false;
+            }
         }
 
         let dR = Math.abs(iRow - fRow); // difference in row number
-        let dC = Math.abs(iRow - fRow); // difference in column number
+        let dC = Math.abs(iCol - fCol); // difference in column number
 
         // Knight (N/n)
         if (piece === 'n' || piece === 'N') {
@@ -189,11 +192,11 @@ class Chessboard {
         // Queen (Q/q)
         if (piece === 'q' || piece === 'Q') {
             // Check if it is moving like a rook
-            if (dRow === 0 || dCol === 0) {
+            if (dR === 0 || dC === 0) {
                 return this.checkRCEmpty(iRow, iCol, fRow, fCol);
             }
             // Otherwise it is moving like a bishop
-            if (dRow === dCol) {
+            if (dR === dC) {
                 return this.checkDiagonalEmpty(iRow, iCol, fRow, fCol);
             }
         }
@@ -202,7 +205,7 @@ class Chessboard {
         if (piece === 'p' || piece === 'P') {
             // White
             if (piece === 'p') {
-                if (fRow - iRow === -1 && dC === 1){
+                if (fRow - iRow === -1 && dC === 1) {
                     return true;
                 }
             }
@@ -220,7 +223,7 @@ class Chessboard {
 
     // Makes the move from initial position to final position
     // Returns true if successful, false otherwise
-    makeMove(iR, iC, fR, fC) {
+    makeMoveHelper(iR, iC, fR, fC) {
         let piece = this.getPiece(iR, iC);
         let pieceColour = this.getPieceColour(piece);
 
@@ -241,7 +244,7 @@ class Chessboard {
         // Handle pawn movement (without capturing) and promotion
         // White
         if (piece == 'p') {
-            if (fC - iC === -1 && iR === fR && this.checkEmpty(fR, fC)) {
+            if (fR - iR === -1 && iC === fC && this.checkEmpty(fR, fC)) {
                 this.setPiece(piece, fR, fC);
                 this.setPiece(EMP, iR, iC);
                 // promote
@@ -253,7 +256,7 @@ class Chessboard {
         }
         // Black
         if (piece == 'P') {
-            if (fC - iC === 1 && iR === fR && this.checkEmpty(fR, fC)) {
+            if (fR - iR === 1 && iC === fC && this.checkEmpty(fR, fC)) {
                 this.setPiece(piece, fR, fC);
                 this.setPiece(EMP, iR, iC);
                 // promote
@@ -271,8 +274,7 @@ class Chessboard {
             futureBoard.setPiece(EMP, iR, iC);
             // Make sure that the move does not leave the allied king open to check
             if (futureBoard.checkKingChecked(pieceColour)) {
-                3
-                //return false;
+                return false;
             }
             this.setPiece(piece, fR, fC);
             this.setPiece(EMP, iR, iC);
@@ -280,5 +282,15 @@ class Chessboard {
         }
         return false;
     }
-    
+
+    makeMove(iR, iC, fR, fC) {
+        if (this.getPieceColour(this.getPiece(iR, iC)) === this.currentTurn){
+            if (this.makeMoveHelper(iR, iC, fR, fC)) {
+                this.currentTurn = 1 - this.currentTurn;
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
